@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/Mahali/static/css/main.5ecd60fb.chunk.css",
+    "main.js": "/Mahali/static/js/main.465cff34.chunk.js",
+    "main.js.map": "/Mahali/static/js/main.465cff34.chunk.js.map",
+    "runtime~main.js": "/Mahali/static/js/runtime~main.d562d459.js",
+    "runtime~main.js.map": "/Mahali/static/js/runtime~main.d562d459.js.map",
+    "static/js/2.1c6a6bbb.chunk.js": "/Mahali/static/js/2.1c6a6bbb.chunk.js",
+    "static/js/2.1c6a6bbb.chunk.js.map": "/Mahali/static/js/2.1c6a6bbb.chunk.js.map",
+    "static/js/3.31c88699.chunk.js": "/Mahali/static/js/3.31c88699.chunk.js",
+    "static/js/3.31c88699.chunk.js.map": "/Mahali/static/js/3.31c88699.chunk.js.map",
+    "index.html": "/Mahali/index.html",
+    "precache-manifest.c6266ca6637aa62da54dc647c7e71bbc.js": "/Mahali/precache-manifest.c6266ca6637aa62da54dc647c7e71bbc.js",
+    "service-worker.js": "/Mahali/service-worker.js",
+    "static/css/main.5ecd60fb.chunk.css.map": "/Mahali/static/css/main.5ecd60fb.chunk.css.map"
+  }
+}
