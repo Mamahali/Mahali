@@ -54,15 +54,7 @@ app.post('/api/product', async (req, res, next) => {
   }
 });
 
-// POST a new product
-app.post('/api/product', (req, res) => {
-  const { name, category, price, quantity } = req.body;
-  if (!name || !category) {
-      return res.status(400).json({ message: 'Name and category are required' });
-  }
-  products.push({ name, category, price, quantity });
-  res.status(201).json({ message: 'Product added successfully' });
-});
+
 
 app.put('/api/products/:name/quantity', async (req, res, next) => {
   const { name } = req.params;
@@ -115,12 +107,137 @@ app.delete('/api/product/:name', async (req, res, next) => {
   }
 });
 
-// Logout route
-app.post('/api/logout', (req, res) => {
-  // Here you might clear any server-side sessions if applicable.
-  res.status(200).json({ message: 'Logout successful' });
+app.post('/api/logout', async (req, res) => {
+  try {
+    const { sessionToken } = req.body;
+
+    // Find and update user session in the database
+    const user = await User.findOneAndUpdate(
+      { sessionToken: sessionToken },
+      { sessionToken: null }, // Clear session token
+      { new: true }
+    );
+
+    if (user) {
+      res.status(200).json({ message: 'Logout successful' });
+    } else {
+      res.status(400).json({ message: 'No active session found' });
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 });
 
+
+
+// POST login route
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required.' });
+  }
+
+  try {
+    console.log(`Attempting login for username: ${username}`);
+    
+    // Fetch user from the database
+    const [rows] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+
+    if (rows.length === 0) {
+      console.error(`Login failed: User ${username} not found.`);
+      return res.status(401).json({ message: 'Invalid username or password.' });
+    }
+
+    const user = rows[0];
+    console.log(`User found: ${user.username}`);
+
+    // Check password (plain text comparison)
+    if (user.password !== password) {
+      console.error(`Login failed: Invalid password for user ${username}.`);
+      return res.status(401).json({ message: 'Invalid username or password.' });
+    }
+
+    // Login successful
+    res.status(200).json({ message: 'Login successful', user: { username: user.username } });
+  } catch (err) {
+    console.error('Error during login:', err);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
+
+// POST sign-up route (storing plain text passwords)
+app.post('/api/signup', async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required.' });
+  }
+
+  try {
+    const query = 'INSERT INTO users (username, password) VALUES (?, ?)';
+    const [result] = await db.query(query, [username, password]); // Store password as plain text
+
+    if (result.affectedRows > 0) {
+      return res.status(201).json({ message: 'Sign-up successful' });
+    } else {
+      return res.status(500).json({ message: 'Error during sign-up' });
+    }
+  } catch (err) {
+    console.error('Error during sign-up:', err);
+    res.status(500).json({ message: 'Database error.' });
+  }
+});
+
+// Fetch all users
+app.get('/api/users', async (req, res) => {
+  try {
+    const [users] = await db.query('SELECT id, username FROM users');
+    res.json(users);
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ message: 'Error fetching users' });
+  }
+});
+
+
+app.put('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { username, password } = req.body;
+  
+  console.log(`Received PUT request for user ID: ${id}`);
+  console.log(`Username: ${username}, Password: ${password}`);
+
+  if (!username || !password) {
+      return res.status(400).json({ message: 'Username and password are required.' });
+  }
+
+  try {
+      const query = 'UPDATE users SET username = ?, password = ? WHERE id = ?';
+      const [result] = await db.query(query, [username, password, id]);
+      res.json({ message: 'User updated successfully' });
+  } catch (err) {
+      console.error('Error updating user:', err);
+      res.status(500).json({ message: 'Error updating user' });
+  }
+});
+
+// Add a new user
+app.post('/api/users', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required' });
+  }
+  try {
+    const [result] = await db.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, password]);
+    res.status(201).json({ message: 'User added successfully', userId: result.insertId });
+  } catch (err) {
+    console.error('Error adding user:', err);
+    res.status(500).json({ message: 'Error adding user' });
+  }
+});
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

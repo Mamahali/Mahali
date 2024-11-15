@@ -1,54 +1,97 @@
 import React, { useState, useEffect } from 'react';
 
-function UserManagement({ users, setUsers }) {
+function UserManagement() {
+    const [users, setUsers] = useState([]);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [email, setEmail] = useState('');
     const [editingIndex, setEditingIndex] = useState(null);
+    const [errorMessage, setErrorMessage] = useState(null); // State for error messages
 
+    // Fetch users from the server
     useEffect(() => {
-        // Make sure users are loaded from localStorage when the component mounts
-        const storedUsers = JSON.parse(localStorage.getItem('users')) || [];
-        setUsers(storedUsers);
-    }, [setUsers]);
+        fetchUsers();
+    }, []);
 
-    const handleAddOrUpdateUser = () => {
-        const newUser = { username, password, email };
-        
-        if (editingIndex !== null) {
-            // Update existing user
-            const updatedUsers = [...users];
-            updatedUsers[editingIndex] = newUser;
-            setUsers(updatedUsers);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-        } else {
-            // Add new user
-            const updatedUsers = [...users, newUser];
-            setUsers(updatedUsers);
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-        }
-        
-        resetForm();
+    const fetchUsers = () => {
+        fetch('http://localhost:5000/api/users')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error fetching users. Status: ${response.status}`);
+                }
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Expected JSON, but received a non-JSON response');
+                }
+            })
+            .then(data => setUsers(data))
+            .catch(error => {
+                console.error('Error fetching users:', error);
+                setErrorMessage(error.message.includes('404') ? 'User API endpoint not found.' : `Error fetching users: ${error.message}`);
+                setUsers([]);
+            });
     };
 
+    const handleAddOrUpdateUser = () => {
+        const newUser = { username, password };
+    
+        if (editingIndex !== null) {
+            const userId = users[editingIndex].id;
+            fetch(`http://localhost:5000/api/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            setErrorMessage(err.message || 'Error updating user');
+                        });
+                    }
+                    fetchUsers();
+                })
+                .catch(error => console.error('Error updating user:', error));
+        } else {
+            fetch('http://localhost:5000/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            setErrorMessage(err.message || 'Error adding user');
+                        });
+                    }
+                    fetchUsers();
+                })
+                .catch(error => console.error('Error adding user:', error));
+        }
+    
+        resetForm();
+    };
+    
     const resetForm = () => {
         setUsername('');
         setPassword('');
-        setEmail('');
         setEditingIndex(null);
     };
 
     const editUser = index => {
-        setUsername(users[index].username);
-        setPassword(users[index].password);
-        setEmail(users[index].email);
+        const user = users[index];
+        setUsername(user.username);
+        setPassword(user.password);
         setEditingIndex(index);
     };
 
     const deleteUser = index => {
-        const updatedUsers = users.filter((_, i) => i !== index);
-        setUsers(updatedUsers);
-        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        const userId = users[index].id;
+        fetch(`http://localhost:5000/api/users/${userId}`, {
+            method: 'DELETE',
+        })
+            .then(fetchUsers)
+            .catch(error => console.error('Error deleting user:', error));
     };
 
     // Inline styles
@@ -102,7 +145,7 @@ function UserManagement({ users, setUsers }) {
     const buttonContainerStyle = {
         display: 'flex',
         justifyContent: 'center',
-        gap: '10px', // Adds space between buttons
+        gap: '10px',
         marginTop: '10px',
     };
 
@@ -110,7 +153,9 @@ function UserManagement({ users, setUsers }) {
         <div style={containerStyle}>
             <h2 style={headingStyle}>User Management</h2>
 
-            {/* User Form */}
+            {/* Render error message if it exists */}
+            {errorMessage && <p style={{ color: 'red', textAlign: 'center' }}>{errorMessage}</p>}
+
             <input
                 value={username}
                 onChange={e => setUsername(e.target.value)}
@@ -121,12 +166,6 @@ function UserManagement({ users, setUsers }) {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="Password"
-                style={inputStyle}
-            />
-            <input
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Email"
                 style={inputStyle}
             />
             <button onClick={handleAddOrUpdateUser} style={buttonStyle}>
@@ -141,8 +180,6 @@ function UserManagement({ users, setUsers }) {
                     {users.map((user, index) => (
                         <li key={index} style={userCardStyle}>
                             <h4>{user.username}</h4>
-                            <p>Email: {user.email}</p>
-                            {/* Align Edit and Delete buttons */}
                             <div style={buttonContainerStyle}>
                                 <button
                                     onClick={() => editUser(index)}
